@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AAP Control Panel</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; max-width: 980px; margin: 32px auto; padding: 0 16px; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 16px; margin-top: 32px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; }
+  button { cursor: pointer; padding: 5px 10px; border-radius: 6px; border: 1px solid #999; background: transparent; }
+  button.danger { border-color: #c33; color: #c33; }
+  button.primary { background: #111; color: #fff; border: none; }
+  input, textarea { padding: 6px 8px; border-radius: 6px; border: 1px solid #999; width: 100%; box-sizing: border-box; }
+  .row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 140px; }
+  .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-top: 12px; }
+  .muted { color: #777; font-size: 13px; }
+  .status-active { color: #2a7; }
+  .status-blocked { color: #c33; font-weight: bold; }
+  #tokenGate { max-width: 420px; margin: 80px auto; }
+</style>
+</head>
+<body>
+
+<div id="tokenGate">
+  <h1>AAP Control Panel</h1>
+  <p class="muted">Admin token দিন (সার্ভার চালু করার সময় যে ADMIN_TOKEN সেট করেছিলেন)</p>
+  <input id="tokenInput" type="password" placeholder="Admin token" />
+  <div class="row"><button class="primary" onclick="saveToken()">ঢুকুন</button></div>
+</div>
+
+<div id="app" style="display:none;">
+  <h1>AAP Control Panel</h1>
+
+  <h2>সাইট রেজিস্টার করুন</h2>
+  <div class="card">
+    <div class="row">
+      <input id="newDomain" placeholder="domain, যেমন classnests.vercel.app" />
+      <input id="newLabel" placeholder="label (ঐচ্ছিক)" />
+      <button class="primary" onclick="registerSite()">+ Register Site</button>
+    </div>
+    <div id="newSiteKeyBox" class="muted"></div>
+  </div>
+
+  <h2>সাইট লিস্ট</h2>
+  <table id="sitesTable">
+    <thead>
+      <tr><th>Domain</th><th>Version</th><th>Access count</th><th>শেষ দেখা</th><th>স্ট্যাটাস</th><th></th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>নতুন রিলিজ পাবলিশ করুন</h2>
+  <div class="card">
+    <div class="row">
+      <input id="relVersion" placeholder="version, যেমন 1.1.0" />
+      <input id="relMinVersion" placeholder="minimum required version (ঐচ্ছিক)" />
+    </div>
+    <div class="row">
+      <input id="relDownloadUrl" placeholder="download URL (ঐচ্ছিক)" />
+    </div>
+    <textarea id="relChangelog" placeholder="changelog / কী নতুন আছে" rows="3"></textarea>
+    <div class="row"><button class="primary" onclick="publishRelease()">Publish Release</button></div>
+  </div>
+
+  <h2>রিলিজ হিস্টোরি</h2>
+  <table id="releasesTable">
+    <thead><tr><th>Version</th><th>Min required</th><th>প্রকাশিত</th><th>Changelog</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+let TOKEN = localStorage.getItem('aap_admin_token') || '';
+
+function saveToken() {
+  TOKEN = document.getElementById('tokenInput').value.trim();
+  if (!TOKEN) return;
+  localStorage.setItem('aap_admin_token', TOKEN);
+  boot();
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + TOKEN,
+      ...(options.headers || {}),
+    },
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+async function boot() {
+  document.getElementById('tokenGate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  await Promise.all([loadSites(), loadReleases()]);
+}
+
+async function loadSites() {
+  try {
+    const { sites } = await api('/api/admin/sites');
+    const tbody = document.querySelector('#sitesTable tbody');
+    tbody.innerHTML = '';
+    for (const s of sites) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(s.domain)}<br><span class="muted">${escapeHtml(s.label || '')}</span></td>
+        <td>${escapeHtml(s.currentVersion || '—')}</td>
+        <td>${s.accessCount}</td>
+        <td>${s.lastSeenAt ? new Date(s.lastSeenAt).toLocaleString() : 'কখনো না'}</td>
+        <td class="status-${s.status}">${s.status}</td>
+        <td>${
+          s.status === 'blocked'
+            ? `<button onclick="unblockSite('${s.id}')">Unblock</button>`
+            : `<button class="danger" onclick="blockSite('${s.id}')">Block</button>`
+        }</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  } catch (err) {
+    alert('সাইট লোড করতে সমস্যা: ' + err.message);
+  }
+}
+
+async function registerSite() {
+  const domain = document.getElementById('newDomain').value.trim();
+  const label = document.getElementById('newLabel').value.trim();
+  if (!domain) return alert('domain দিন');
+  try {
+    const { siteKey, siteId } = await api('/api/admin/sites', {
+      method: 'POST',
+      body: JSON.stringify({ domain, label }),
+    });
+    document.getElementById('newSiteKeyBox').innerHTML =
+      `<strong>এই site key-টা এখনই ওই সাইটের env variable-এ বসান (CONTROL_SITE_KEY):</strong><br><code>${siteKey}</code> — আর কখনো দেখানো হবে না। (siteId: ${siteId})`;
+    document.getElementById('newDomain').value = '';
+    document.getElementById('newLabel').value = '';
+    await loadSites();
+  } catch (err) {
+    alert('রেজিস্টার করতে সমস্যা: ' + err.message);
+  }
+}
+
+async function blockSite(id) {
+  if (!confirm('এই সাইট block করলে ওই সাইটে আর কোনো AI key redeem করতে পারবে না। নিশ্চিত?')) return;
+  await api(`/api/admin/sites/${id}/block`, { method: 'POST' });
+  await loadSites();
+}
+
+async function unblockSite(id) {
+  await api(`/api/admin/sites/${id}/unblock`, { method: 'POST' });
+  await loadSites();
+}
+
+async function publishRelease() {
+  const version = document.getElementById('relVersion').value.trim();
+  const minVersion = document.getElementById('relMinVersion').value.trim();
+  const downloadUrl = document.getElementById('relDownloadUrl').value.trim();
+  const changelog = document.getElementById('relChangelog').value.trim();
+  if (!version) return alert('version দিন');
+  try {
+    await api('/api/admin/releases', {
+      method: 'POST',
+      body: JSON.stringify({ version, minVersion: minVersion || null, downloadUrl: downloadUrl || null, changelog }),
+    });
+    document.getElementById('relVersion').value = '';
+    document.getElementById('relMinVersion').value = '';
+    document.getElementById('relDownloadUrl').value = '';
+    document.getElementById('relChangelog').value = '';
+    await loadReleases();
+    alert('রিলিজ পাবলিশ হয়েছে — যেসব সাইট পরবর্তী version-check কল করবে, তারা এটা দেখতে পাবে।');
+  } catch (err) {
+    alert('পাবলিশ করতে সমস্যা: ' + err.message);
+  }
+}
+
+async function loadReleases() {
+  try {
+    const { releases } = await api('/api/admin/releases');
+    const tbody = document.querySelector('#releasesTable tbody');
+    tbody.innerHTML = '';
+    for (const r of releases) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(r.version)}</td>
+        <td>${escapeHtml(r.minVersion || '—')}</td>
+        <td>${new Date(r.publishedAt).toLocaleString()}</td>
+        <td>${escapeHtml(r.changelog || '')}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  } catch (err) {
+    alert('রিলিজ লোড করতে সমস্যা: ' + err.message);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+if (TOKEN) boot();
+</script>
+</body>
+</html>

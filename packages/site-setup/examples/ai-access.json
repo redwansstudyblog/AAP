@@ -1,0 +1,29 @@
+{
+  "aap_version": "0.1",
+  "site": "ClassNests",
+  "description": "Class scheduling and student management tool.",
+  "auth": {
+    "type": "single_use_key",
+    "key_header": "X-AAP-Key",
+    "redeem_endpoint": "/api/ai-access/session",
+    "session_header": "X-AAP-Session",
+    "session_ttl_minutes": 30,
+    "obtain_url": "https://classnests.vercel.app/settings/ai-access"
+  },
+  "endpoints": [
+    {
+      "name": "dashboard_summary",
+      "method": "GET",
+      "path": "/api/ai-access/dashboard",
+      "description": "Returns the logged-in-equivalent dashboard data as JSON."
+    },
+    {
+      "name": "list_classes",
+      "method": "GET",
+      "path": "/api/ai-access/classes",
+      "description": "Returns the list of classes for the authenticated account."
+    }
+  ],
+  "rate_limit": "60 requests / minute",
+  "contact": "support@classnests.example"
+}

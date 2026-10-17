@@ -1,0 +1,12 @@
+{
+  "name": "site-login-automation",
+  "version": "1.0.0",
+  "description": "Standalone Playwright login script used by the site-login-automation skill.",
+  "main": "scripts/login.js",
+  "scripts": {
+    "login": "node scripts/login.js"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0"
+  }
+}
