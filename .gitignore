@@ -7,3 +7,7 @@ dist/
 build/
 .next/
 login-output/
+
+# Internal admin tool — not published in this public repo.
+# Hosted separately (Vercel) and access-restricted with ADMIN_TOKEN.
+packages/control-panel/

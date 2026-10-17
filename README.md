@@ -21,21 +21,18 @@ AI এজেন্টদের (Claude, বা অন্য কোনো AI) প
 4. session শেষ হলে অ্যাক্সেসও শেষ — পরের বার নতুন key লাগবে
 ```
 
-এটা তিনটা স্বতন্ত্র প্যাকেজে ভাগ করা, কারণ এতে কাজ করা তিনজন ভিন্ন মানুষ/ভিন্ন সময়ে এটা ব্যবহার করে:
+এটা স্বতন্ত্র প্যাকেজে ভাগ করা, কারণ এতে কাজ করা ভিন্ন মানুষ/ভিন্ন সময়ে এটা ব্যবহার করে:
 
-| # | প্যাকেজ | কার জন্য | কী করে |
-|---|---|---|---|
-| 1 | [`packages/site-setup`](./packages/site-setup) | ওয়েবসাইট মালিক / ডেভেলপার | নিজের সাইটে AAP বসানো — discovery route, key system, admin UI |
-| 2 | [`packages/ai-access-skill`](./packages/ai-access-skill) | যে AI দিয়ে অন্য সাইটে কাজ করাবেন | AI-কে দেওয়ার স্কিল — AAP থাকলে সেটা ব্যবহার করে, না থাকলে ফলব্যাক |
-| 3 | [`packages/control-panel`](./packages/control-panel) | আপনার টিম (অ্যাডমিন) | কোন সাইট কতবার ব্যবহার হচ্ছে দেখা, ব্লক করা, নতুন ভার্সন পাবলিশ করা |
+| # | প্যাকেজ | কী করে |
+|---|---|---|
+| 1 | [`packages/site-setup`](./packages/site-setup) | নিজের সাইটে AAP বসানো — discovery route, key system, admin UI |
+| 2 | [`packages/ai-access-skill`](./packages/ai-access-skill) | AI-কে দেওয়ার স্কিল — AAP থাকলে সেটা ব্যবহার করে, না থাকলে ফলব্যাক |
 
 ## কোথা থেকে শুরু করবেন
 
 **আপনি যদি একটা সাইটে AI-এর জন্য দরজা খুলতে চান** → [`packages/site-setup/SETUP.md`](./packages/site-setup/SETUP.md) খুলুন, ধাপে ধাপে অনুসরণ করুন।
 
 **আপনি যদি কোনো AI-কে একটা সাইটে কাজ করাতে চান** → [`packages/ai-access-skill/README.md`](./packages/ai-access-skill/README.md) খুলুন।
-
-**আপনি যদি সব সাইট মনিটর/কন্ট্রোল করতে চান** → [`packages/control-panel/README.md`](./packages/control-panel/README.md) খুলুন।
 
 ## ডিজাইনের মূলনীতি
 
